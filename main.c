@@ -25,7 +25,7 @@ int main(void)
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0); // 'AF_INET=ipv4 -- 'SOCK_STREAM=TCP connection
     if (socket_fd == -1)
     {
-        perror("socket connection failed");
+        printf("SERVER SOCKET creation failed: %s \n", strerror(errno));
         exit(1);
     }
 
@@ -42,7 +42,7 @@ int main(void)
     int b = bind(socket_fd, (const struct sockaddr *)&serv_addr, sizeof(serv_addr));
     if (b == -1)
     {
-        perror("bind failed");
+        printf("BIND failed: %s \n", strerror(errno));
         exit(1);
     }
 
@@ -75,6 +75,20 @@ int main(void)
     {
         // to continue https://github.com/IonelPopJara/http-server-c/blob/master/app/server.c
         // https://en.wikipedia.org/wiki/Berkeley_sockets
+        printf("Server started.\n");
+        printf("\tWaiting for clients to connect...\n");
+
+        struct sockaddr_in client_addr;
+        int client_size = sizeof(client_addr);
+
+        int client_socket_fd = accept(socket_fd, (struct sockaddr *)&client_addr, &client_size);
+        if (client_socket_fd == -1)
+        {
+            printf("Failed to connect: %s \n", strerror(errno));
+            exit(1);
+        }
+        printf("Client connected\n");
+
     }
 
     return 0;
