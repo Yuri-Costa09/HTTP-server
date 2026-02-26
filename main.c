@@ -33,7 +33,6 @@
  * - Big-Endian (BE) - Stores the most significant byte first in the lowest address of Memory.
  * - Little-Endian (LE) - Stores the least significant byte first in the lowest address of Memory.
  *
- *
  * docs: https://man.freebsd.org/cgi/man.cgi?kqueue
  */
 
@@ -105,8 +104,14 @@ int main(void)
 
     int kq = kqueue();
     ABORT_ON_ERROR(kq);
+    // Add server_socket_fd to kqueue so we can track any incoming operations.
     kqueue_add(server_socket_fd, kq, EVFILT_READ);
 
+    /*
+     * This is the list of events that happened. We are going to iterate over the new events registered in kqueue.
+     * This Operation is O(1), differently from Select(), This list only contains kevents that actually happened.
+     * While with Select(), you have to iterate over all descriptors to see if any change happened.
+     */
     struct kevent events[MAX_EVENTS];
 
     while (1)
@@ -124,7 +129,11 @@ int main(void)
             }
             /*
              * Check if the FD from kqueue equals to the server_fd
-             * When you make a request to the PORT that the server_socket_fd is binded to; Appears as activity in kqueue
+             * When you make a request to the PORT that the server_socket_fd is binded to;
+             * Appears as an event in kqueue.
+             *
+             * If an event that is == server_socket_fd, means someone (a client) is communicating with the server_socket.
+             * Then, we are creating a client_socket and registering it in kqueue.
              */
             if (fd == server_socket_fd)
             {
@@ -145,12 +154,18 @@ int main(void)
 
                 printf("Client Socket Connected. \n\n");
             }
-            // Data incoming from Client
+            /*
+             * Client Socket event.
+             */
             if (events[i].filter == EVFILT_READ && fd != server_socket_fd)
             {
-                char buffer[BUFFER_SIZE];
-                memset(buffer, 0, sizeof(buffer));
+                /*
+                 * Read Data using a buffer from client.
+                 */
+                char buffer[BUFFER_SIZE];          // Allocate memory buffer from stack.
+                memset(buffer, 0, sizeof(buffer)); // Clean garbage from this allocated buffer.
 
+                // actually read bytes stream with recv() and put in buffer.
                 ssize_t bytes_read = recv(fd, buffer, sizeof(buffer) - 1, 0);
                 ABORT_ON_ERROR(bytes_read);
 
@@ -164,6 +179,9 @@ int main(void)
                         printf("%c", buffer[j]);
                 }
 
+                /*
+                 * Assemble response: 200 OK with Content-Length Header.
+                 */
                 char *body = "Hello, World!";
                 char response[4096] = "HTTP/1.1 200 OK\r\nContent-Length: %ld\r\n \r\nHello, World!";
                 snprintf(response, sizeof(response),
