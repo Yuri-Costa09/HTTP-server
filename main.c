@@ -117,6 +117,11 @@ int main(void)
         {
             int fd = events[i].ident;
 
+            if (events[i].flags & EV_ERROR || events[i].flags & EV_EOF)
+            {
+                close(fd);
+                continue;
+            }
             /*
              * Check if the FD from kqueue equals to the server_fd
              * When you make a request to the PORT that the server_socket_fd is binded to; Appears as activity in kqueue
@@ -127,13 +132,37 @@ int main(void)
                 socklen_t client_addr_size = sizeof(client_addr);
 
                 int client_socket_fd = accept(server_socket_fd, (struct sockaddr *)&client_addr, &client_addr_size);
+                if (client_socket_fd == -1)
+                {
+                    if (errno == EWOULDBLOCK)
+                        continue;
+                    ABORT_ON_ERROR(client_socket_fd);
+                }
 
-                if (client_socket_fd == EWOULDBLOCK)
-                    continue;
+                set_nonblocking(client_socket_fd);
+                kqueue_add(client_socket_fd, kq, EVFILT_READ);
 
-                ABORT_ON_ERROR(client_socket_fd);
 
-                printf("DEU CERTO \n");
+                printf("Client Socket Connected. \n\n");
+            }
+            // Data incoming from Client
+            if (events[i].filter == EVFILT_READ && fd != server_socket_fd)
+            {
+                char buffer[BUFFER_SIZE];
+                memset(buffer, 0, sizeof(buffer));
+
+                ssize_t bytes_read = recv(fd, buffer, sizeof(buffer) - 1, 0);
+                ABORT_ON_ERROR(bytes_read);
+
+                for (ssize_t j = 0; j < bytes_read; j++)
+                {
+                    if (buffer[j] == '\r')
+                        printf("\\r");
+                    else if (buffer[j] == '\n')
+                        printf("\\n\n");
+                    else
+                        printf("%c", buffer[j]);
+                }
             }
         }
     }
