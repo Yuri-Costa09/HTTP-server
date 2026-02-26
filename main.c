@@ -178,8 +178,8 @@ int main(void)
                 ssize_t s = send(fd, response, strlen(response), 0);
                 ABORT_ON_ERROR(s);
 
-                close(fd);
                 kqueue_del(fd, kq, EVFILT_READ);
+                close(fd);
             }
         }
     }
