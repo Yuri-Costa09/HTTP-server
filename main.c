@@ -163,6 +163,23 @@ int main(void)
                     else
                         printf("%c", buffer[j]);
                 }
+
+                char *body = "Hello, World!";
+                char response[4096] = "HTTP/1.1 200 OK\r\nContent-Length: %ld\r\n \r\nHello, World!";
+                snprintf(response, sizeof(response),
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Length: %ld\r\n"
+                    "\r\n"
+                    "%s",
+                    strlen(body),
+                    body
+                );
+
+                ssize_t s = send(fd, response, strlen(response), 0);
+                ABORT_ON_ERROR(s);
+
+                close(fd);
+                kqueue_del(fd, kq, EVFILT_READ);
             }
         }
     }
