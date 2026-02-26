@@ -178,6 +178,7 @@ int main(void)
                 ssize_t s = send(fd, response, strlen(response), 0);
                 ABORT_ON_ERROR(s);
 
+                // remove from kqueue so won't leak inside of it.
                 kqueue_del(fd, kq, EVFILT_READ);
                 close(fd);
             }
